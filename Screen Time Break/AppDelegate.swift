@@ -5,10 +5,8 @@
 //  Created by Pieter Yoshua Natanael on 18/03/24.
 //
 
-
 import UIKit
 import AVFoundation
-
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -16,15 +14,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Request audio background permission
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
-            try AVAudioSession.sharedInstance().setActive(true)
+            let session = AVAudioSession.sharedInstance()
+            if session.category != .playback {
+                try session.setCategory(.playback, options: .mixWithOthers)
+            }
+            try session.setActive(true)
         } catch {
-            print("Failed to set audio session category.")
+            print("Failed to set audio session category or activate audio session: \(error.localizedDescription)")
         }
 
         return true
     }
 }
+
 
 /*
 import UIKit

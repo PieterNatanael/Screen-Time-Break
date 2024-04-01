@@ -5,6 +5,270 @@
 //  Created by Pieter Yoshua Natanael on 18/03/24.
 //
 
+
+import SwiftUI
+import AVFoundation
+
+struct ContentView: View {
+    // Timer and speech synthesizer states
+    @State private var isTimerRunning = UserDefaults.standard.bool(forKey: "isTimerRunning")
+    @State private var timerCount = UserDefaults.standard.integer(forKey: "timerCount")
+    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var speechSynthesizer = AVSpeechSynthesizer()
+    
+    @Environment(\.scenePhase) private var scenePhase // Detect app's current phase (active, background, etc.)
+    
+    var body: some View {
+        ZStack {
+            // Background color
+            Color(#colorLiteral(red: 0.370555222, green: 0.3705646992, blue: 0.3705595732, alpha: 1))
+                .ignoresSafeArea()
+            
+            VStack {
+                // Title text and button code here...
+                Text("Screen Time Break")
+                    .foregroundColor(Color(#colorLiteral(red: 0.370555222, green: 0.3705646992, blue: 0.3705595732, alpha: 1)))
+                    .font(.title.bold())
+                    .multilineTextAlignment(.center)
+                    .frame(width: 133, height: 133)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(15)
+                
+                Text(formatTime(timerCount))
+                    .foregroundColor(Color(#colorLiteral(red: 0.370555222, green: 0.3705646992, blue: 0.3705595732, alpha: 1)))
+                    .font(.title.bold())
+                    .multilineTextAlignment(.center)
+                    .frame(width: 133, height: 133)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(15)
+                
+                Button(action: {
+                    if isTimerRunning {
+                        stopTimer()
+                    } else {
+                        startTimer()
+                    }
+                }) {
+                    Text(isTimerRunning ? "Stop" : "Start")
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+                        .frame(width: 133, height: 133)
+                        .padding()
+                        .foregroundColor(Color.white)
+                        .background(isTimerRunning ? Color.red : Color.blue)
+                        .cornerRadius(15)
+                }
+            }
+        }
+        .onReceive(timer) { _ in
+            // Timer logic here...
+            if isTimerRunning {
+                if timerCount > 0 {
+                    timerCount -= 1
+                } else {
+                    startSpeech()
+                    timerCount = 1200 // Reset timer for next cycle
+                }
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            switch phase {
+            case .active: // App becomes active (foreground)
+                if isTimerRunning {
+                    startTimer() // Resume timer
+                }
+            case .background: // App enters background
+                saveTimerState() // Save timer state to UserDefaults
+                if isTimerRunning {
+                    stopTimer() // Pause timer
+                }
+            default:
+                break
+            }
+        }
+        .onAppear {
+            restoreTimerState() // Restore timer state from UserDefaults
+            if isTimerRunning {
+                startTimer() // Start timer if it was running before
+            }
+        }
+    }
+    
+    // Start the timer and speech
+    func startTimer() {
+        isTimerRunning = true
+        timerCount = UserDefaults.standard.integer(forKey: "timerCount") // Reset timer to saved value
+        timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+        startSpeech() // Start speech immediately
+    }
+    
+    // Stop the timer and speech
+    func stopTimer() {
+        isTimerRunning = false
+        timer.upstream.connect().cancel()
+        saveTimerState() // Save timer state when stopped
+    }
+    
+    // Format time in MM:SS format
+    func formatTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        return String(format: "%02d:%02d", minutes, remainingSeconds)
+    }
+    
+    // Start speaking instructions
+    func startSpeech() {
+        let speechString = "Screen time break. Please see something 20 feet away for 20 seconds. Blink slowly once. Blink slowly twice. Blink slowly thrice. Blink slowly four times. Blink slowly five times. Blink slowly six times. Blink slowly seven times."
+        let speechUtterance = AVSpeechUtterance(string: speechString)
+        speechSynthesizer.speak(speechUtterance)
+    }
+    
+    // Save timer state to UserDefaults
+    func saveTimerState() {
+        UserDefaults.standard.set(isTimerRunning, forKey: "isTimerRunning")
+        UserDefaults.standard.set(timerCount, forKey: "timerCount")
+    }
+    
+    // Restore timer state from UserDefaults
+    func restoreTimerState() {
+        isTimerRunning = UserDefaults.standard.bool(forKey: "isTimerRunning")
+        timerCount = UserDefaults.standard.integer(forKey: "timerCount")
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}
+
+
+/*
+import SwiftUI
+import AVFoundation
+
+struct ContentView: View {
+    // Timer and speech synthesizer states
+    @State private var isTimerRunning = false
+    @State private var timerCount = 1200 // 20 minutes in seconds
+    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var speechSynthesizer = AVSpeechSynthesizer()
+    
+    @Environment(\.scenePhase) private var scenePhase // Detect app's current phase (active, background, etc.)
+    
+    var body: some View {
+        ZStack {
+            // Background color
+            Color(#colorLiteral(red: 0.370555222, green: 0.3705646992, blue: 0.3705595732, alpha: 1))
+                .ignoresSafeArea()
+            
+            VStack {
+                // Title text
+                Text("Screen Time Break")
+                    .foregroundColor(Color(#colorLiteral(red: 0.370555222, green: 0.3705646992, blue: 0.3705595732, alpha: 1)))
+                    .font(.title.bold())
+                    .multilineTextAlignment(.center)
+                    .frame(width: 133, height: 133)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(15)
+                
+                // Timer text
+                Text(formatTime(timerCount))
+                    .foregroundColor(Color(#colorLiteral(red: 0.370555222, green: 0.3705646992, blue: 0.3705595732, alpha: 1)))
+                    .font(.title.bold())
+                    .multilineTextAlignment(.center)
+                    .frame(width: 133, height: 133)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(15)
+                
+                // Start/Stop button
+                Button(action: {
+                    if isTimerRunning {
+                        stopTimer()
+                    } else {
+                        startTimer()
+                    }
+                }) {
+                    Text(isTimerRunning ? "Stop" : "Start")
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+                        .frame(width: 133, height: 133)
+                        .padding()
+                        .foregroundColor(Color.white)
+                        .background(isTimerRunning ? Color.red : Color.blue)
+                        .cornerRadius(15)
+//                        .shadow(color: .gray, radius: 5, x: 0, y: 2)
+                }
+            }
+            .onReceive(timer) { _ in
+                if isTimerRunning {
+                    if timerCount > 0 {
+                        timerCount -= 1
+                    } else {
+                        startSpeech()
+                        timerCount = 1200 // Reset timer for next cycle
+                    }
+                }
+            }
+            .onChange(of: scenePhase) { phase in
+                           switch phase {
+                           case .active: // App becomes active (foreground)
+                               if isTimerRunning {
+                                   startTimer() // Resume timer
+                               }
+                           case .background: // App enters background
+                               if isTimerRunning {
+                                   stopTimer() // Pause timer
+                               }
+                           default:
+                               break
+                           }
+                       }
+                   }
+               }
+               
+               // Start the timer
+               func startTimer() {
+                   isTimerRunning = true
+                   timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+                   startSpeech() // Start speech immediately
+               }
+               
+               // Stop the timer
+               func stopTimer() {
+                   isTimerRunning = false
+                   timer.upstream.connect().cancel()
+                   timerCount = 1200 // Reset timer to initial value
+               }
+               
+               // Format time in MM:SS format
+               func formatTime(_ seconds: Int) -> String {
+                   let minutes = seconds / 60
+                   let remainingSeconds = seconds % 60
+                   return String(format: "%02d:%02d", minutes, remainingSeconds)
+               }
+               
+               // Start speaking instructions
+               func startSpeech() {
+                   let speechString = "Screen time break. Please see something 20 feet away for 20 seconds. Blink slowly once. Blink slowly twice. Blink slowly thrice. Blink slowly four times. Blink slowly five times. Blink slowly six times. Blink slowly seven times."
+                   let speechUtterance = AVSpeechUtterance(string: speechString)
+                   speechSynthesizer.speak(speechUtterance)
+               }
+           }
+
+           struct ContentView_Previews: PreviewProvider {
+               static var previews: some View {
+                   ContentView()
+               }
+           }
+
+*/
+
+/*
 import SwiftUI
 import AVFoundation
 
@@ -68,6 +332,7 @@ struct ContentView_Previews: PreviewProvider {
    }
 }
 
+*/
 /*/
 import SwiftUI
 import AVFoundation
